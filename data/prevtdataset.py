@@ -2,7 +2,7 @@ import os
 import json
 import numpy as np
 from torch.utils.data import Dataset
-from datasets.constants import AI2THOR_TARGET_CLASSES
+from .constants import AI2THOR_TARGET_CLASSES
 
 
 class PreVTDataset(Dataset):

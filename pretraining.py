@@ -53,7 +53,7 @@ def evaluate(model, data_loader, epoch):
         }
 
         output = model(global_feature, local_feature)
-        predicted = output.argmax(dim=1)
+        predicted = output["action"].argmax(dim=1)
         total += predicted.size(0)
         correct += (predicted == optimal_action).sum().item()
 
@@ -62,7 +62,7 @@ def evaluate(model, data_loader, epoch):
 
 def main(args):
     out_dir = createOutputDirectory(args.out_dir)
-    model = PreTrainedVT().to(device)
+    model = PreTrainedVT(device, use_nn_transformer=args.use_nn_transformer).to(device)
     criterion = torch.nn.CrossEntropyLoss()
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
@@ -122,14 +122,16 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="VTNet pretraining.")
-    parser.add_argument("--data-dir", type="str", required=True, dest="data_dir", help="Data directory of pretraining data")
-    parser.add_argument("--out-dir", type="str", required=True, dest="out_dir", help="Output directory")
-    parser.add_argument("--lr", type="float", required=False, dest="lr", help="Learning rate", default=0.0001)
-    parser.add_argument("--weight-decay", type="float", required=False, dest="weight_decay", help="Weight decay", default=0.0001)
-    parser.add_argument("--batch-size", type="int", required=False, dest="batch_size", help="Batch size", default=32)
-    parser.add_argument("--num-workers", type="int", required=False, dest="num_workers", help="Number of workers", default=0)
-    parser.add_argument("--epochs", type="int", required=False, dest="n_epochs", help="Number of epochs", default=100)
+    parser.add_argument("--data-dir", type=str, required=True, dest="data_dir", help="Data directory of pretraining data")
+    parser.add_argument("--out-dir", type=str, required=True, dest="out_dir", help="Output directory")
+    parser.add_argument("--lr", type=float, required=False, dest="lr", help="Learning rate", default=0.0001)
+    parser.add_argument("--weight-decay", type=float, required=False, dest="weight_decay", help="Weight decay", default=0.0001)
+    parser.add_argument("--batch-size", type=int, required=False, dest="batch_size", help="Batch size", default=32)
+    parser.add_argument("--num-workers", type=int, required=False, dest="num_workers", help="Number of workers", default=0)
+    parser.add_argument("--epochs", type=int, required=False, dest="n_epochs", help="Number of epochs", default=100)
     parser.add_argument("--do-test", action="store_true", dest="do_test", help="Perform testing")
+    parser.add_argument("--save-every", type=int, required=False, dest="save_every", help="Save trained models after {save-every} epochs", default=1)
+    parser.add_argument("--use-nn-transformer", action="store_true", dest="use_nn_transformer", help="Use torch.nn.Transformer")
 
     args = parser.parse_args()
     main(args)
