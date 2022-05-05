@@ -17,13 +17,13 @@ def createOutputDirectory(path):
     return path
 
 
-def train(model, criterion, data_loader, optimizer, epoch, print_every=1000):
+def train(model, criterion, data_loader, optimizer, epoch, print_every=1):
     model.train()
     criterion.train()
-    optimizer.zero_grad()
 
     start = time.time()
     for idx, (global_feature, local_feature, optimal_action) in enumerate(data_loader):
+        optimizer.zero_grad()
         global_feature = global_feature.to(device)
         optimal_action = optimal_action.to(device)
         local_feature = {
