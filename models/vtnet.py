@@ -73,13 +73,10 @@ class PreTrainedVT(nn.Module):
             local_feature['indicator']
         ), dim=2)
 
-        print(f"local_input: {local_input.shape}\nimage_embedding: {image_embedding.shape}")
-
         if self.use_nn_transformer:
             visual_representation = self.visual_transformer(src=local_input, tgt=image_embedding.permute(0, 2, 1))
         else:
             visual_representation, _ = self.visual_transformer(src=local_input, query_embed=image_embedding)
-        print(f"visual_representation: {visual_representation.shape}")
 
         visual_rep = self.visual_rep_embedding(visual_representation)
         visual_rep = visual_rep.reshape(batch_size, -1)
