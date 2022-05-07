@@ -1,0 +1,5 @@
+[core]
+    remote = ngdrive
+    autostage = true
+['remote "ngdrive"']
+    url = gdrive://1hBATcFUFja1QeyzNf5u09HJMXyKn9izQ/vtnet
