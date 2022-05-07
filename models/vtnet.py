@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from model_io import ModelOutput
 
 from .transformer import Transformer, TransformerEncoderLayer, TransformerEncoder, TransformerDecoderLayer, \
     TransformerDecoder
@@ -204,35 +205,55 @@ class VTNet(nn.Module):
         self.actor_linear = nn.Linear(self.hidden_state_sz, self.action_space)
 
 
-    def forward(self, global_feature: torch.Tensor, local_feature: dict):
-        batch_size = global_feature.shape[0]
-
-        global_feature = global_feature.squeeze(dim=1)
-        image_embedding = F.relu(self.global_conv(global_feature))
-        image_embedding = image_embedding + self.global_pos_embedding.repeat([batch_size, 1, 1, 1]).to(self.device)
-        image_embedding = image_embedding.reshape(batch_size, -1, 49)
-
-        detection_input_features = self.local_embedding(local_feature['features'].unsqueeze(dim=0)).squeeze(dim=0)
-        local_input = torch.cat((
+    def embedding(self, state, detection_inputs, action_embedding_input):
+        detection_input_features = self.local_embedding(detection_inputs['features'].unsqueeze(dim=0)).squeeze(dim=0)
+        detection_input = torch.cat((
             detection_input_features,
-            local_feature['labels'].unsqueeze(dim=2),
-            local_feature['bboxes'] / self.image_size,
-            local_feature['scores'].unsqueeze(dim=2),
-            local_feature['indicator']
-        ), dim=2)
+            detection_inputs['labels'].unsqueeze(dim=1),
+            detection_inputs['bboxes'] / self.image_size,
+            detection_inputs['scores'].unsqueeze(dim=1),
+            detection_inputs['indicator']
+        ), dim=1).unsqueeze(dim=0)
 
-        if self.use_nn_transformer:
-            visual_representation = self.visual_transformer(src=local_input, tgt=image_embedding.permute(0, 2, 1))
-        else:
-            visual_representation, _ = self.visual_transformer(src=local_input, query_embed=image_embedding)
+        image_embedding = F.relu(self.global_conv(state))
+        gpu_id = image_embedding.get_device()
+        image_embedding = image_embedding + self.global_pos_embedding.cuda(gpu_id)
+        image_embedding = image_embedding.reshape(1, -1, 49)
 
-        visual_rep = self.visual_rep_embedding(visual_representation)
-        visual_rep = visual_rep.reshape(batch_size, -1)
+        action_embedding = F.relu(self.embed_action(action_embedding_input)).unsqueeze(dim=2)
+        visual_queries = torch.cat((image_embedding, action_embedding), dim=-1)
+        visual_representation, encoded_rep = self.visual_transformer(src=detection_input,
+                                                                        query_embed=visual_queries)
+        out = self.visual_rep_embedding(visual_representation)
 
-        action = self.pretrain_fc(visual_rep)
+        out = out.reshape(1, -1)
 
-        return {
-            'action': action,
-            'fc_weights': self.pretrain_fc.weight,
-            'visual_reps': visual_rep.reshape(batch_size, 64, 49)
-        }
+        return out, image_embedding
+
+    def a3clstm(self, embedding, prev_hidden_h, prev_hidden_c):
+        embedding = embedding.reshape([1, 1, self.lstm_input_sz])
+        output, (hx, cx) = self.lstm(embedding, (prev_hidden_h, prev_hidden_c))
+        x = output.reshape([1, self.hidden_state_sz])
+
+        actor_out = self.actor_linear(x)
+        critic_out = self.critic_linear_1(x)
+        critic_out = self.critic_linear_2(critic_out)
+
+        return actor_out, critic_out, (hx, cx)
+
+    def forward(self, model_input, model_options):
+        state = model_input.state
+        (hx, cx) = model_input.hidden
+
+        detection_inputs = model_input.detection_inputs
+        action_probs = model_input.action_probs
+
+        x, image_embedding = self.embedding(state, detection_inputs, action_probs)
+        actor_out, critic_out, (hx, cx) = self.a3clstm(x, hx, cx)
+
+        return ModelOutput(
+            value=critic_out,
+            logit=actor_out,
+            hidden=(hx, cx),
+            embedding=image_embedding,
+        )
