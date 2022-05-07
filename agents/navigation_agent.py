@@ -27,10 +27,10 @@ class NavigationAgent(ThorAgent):
         self.hidden_state_sz = hidden_state_sz
 
         self.glove = {}
-        if 'SP' in self.model_name:
-            with h5py.File(os.path.expanduser('~/Code/vn/glove_map300d.hdf5'), 'r') as rf:
-                for i in rf:
-                    self.glove[i] = rf[i][:]
+        # if 'SP' in self.model_name:
+        #     with h5py.File(os.path.expanduser('~/Code/vn/glove_map300d.hdf5'), 'r') as rf:
+        #         for i in rf:
+        #             self.glove[i] = rf[i][:]
 
 
     def eval_at_state(self, model_options):

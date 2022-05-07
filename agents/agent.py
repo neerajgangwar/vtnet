@@ -44,15 +44,15 @@ class ThorAgent:
         self.backprop_t = 0
 
         self.verbose = args.verbose
-        self.learned_loss = args.learned_loss
+        self.learned_loss = False
         self.learned_input = None
         self.learned_t = 0
-        self.num_steps = args.num_steps
-        self.hidden_state_sz = args.hidden_state_sz
-        self.action_space = args.action_space
+        self.num_steps = 50 
+        self.hidden_state_sz = 512 
+        self.action_space = 6
 
         self.targets_types = None
-        self.model_name = args.model
+        # self.model_name = args.model
 
         self.action_num = 0
         self.meta_learning_actions = {}
@@ -69,7 +69,7 @@ class ThorAgent:
         self.il_failed_action = False
         self.il_update_actions = {}
 
-        self.record_attention = args.record_attention
+        self.record_attention = False # args.record_attention
 
     # def sync_with_shared(self, shared_model):
     #     """ Sync with the shared model. """

@@ -88,8 +88,12 @@ def main(args):
         processes.append(p)
         time.sleep(0.1)
 
+    print("Train agents created.")
+    a3c_train(args, model, optimizer, train_res_queue, end_flag, scenes, AI2THOR_TARGET_CLASSES, device)
+
     try:
         while train_total_ep < args.max_ep:
+            print(f"train_total_ep: {train_total_ep}")
             train_result = train_res_queue.get()
             print(f"train_result: {train_result}")
             train_total_ep += 1
