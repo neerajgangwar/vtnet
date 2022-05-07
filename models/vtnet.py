@@ -141,3 +141,98 @@ class VisualTransformer(Transformer):
         hs = self.decoder(tgt, memory, query_pos=query_embed)
         return hs.transpose(0, 1), memory.permute(1, 2, 0).view(bs, c, n)
 
+
+class VTNet(nn.Module):
+    def __init__(self, device, use_nn_transformer=True):
+        super(VTNet, self).__init__()
+        self.num_category = 22
+        self.image_size = 300
+        self.action_space = 6
+        self.hidden_state_sz = 512
+        self.lstm_input_sz = 3200
+        self.device = device
+        self.use_nn_transformer = use_nn_transformer
+
+        # same layers as VisualTransformer visual representation learning part
+        self.global_conv = nn.Conv2d(512, 256, 1)
+        self.global_pos_embedding = get_gloabal_pos_embedding(7, 128)
+
+        self.embed_action = nn.Linear(self.action_space, 256)
+
+        self.local_embedding = nn.Sequential(
+            nn.Linear(256, 249),
+            nn.ReLU(),
+        )
+
+        if self.use_nn_transformer:
+            print("Using nn.Transformer")
+            self.visual_transformer = nn.Transformer(
+                d_model=256,
+                nhead=8,
+                num_encoder_layers=6,
+                num_decoder_layers=6,
+                dim_feedforward=512,
+                dropout=0,
+                activation="relu",
+                batch_first=True,
+            )
+        else:
+            print("Using vtnet.VisualTransformer")
+            self.visual_transformer = VisualTransformer(
+                nhead=8,
+                num_encoder_layers=6,
+                num_decoder_layers=6,
+                dim_feedforward=512,
+                dropout=0,
+            )
+
+        self.visual_rep_embedding = nn.Sequential(
+            nn.Linear(256, 128),
+            nn.ReLU(),
+            nn.Linear(128, 64),
+            nn.ReLU(),
+            nn.Dropout(p=0),
+        )
+
+        # pretraining network action predictor, should be used in Visual Transformer model
+        self.hidden_state_sz = self.hidden_state_sz
+
+        self.lstm = nn.LSTM(self.lstm_input_sz, self.hidden_state_sz, 2)
+
+        self.critic_linear_1 = nn.Linear(self.hidden_state_sz, 64)
+        self.critic_linear_2 = nn.Linear(64, 1)
+        self.actor_linear = nn.Linear(self.hidden_state_sz, self.action_space)
+
+
+    def forward(self, global_feature: torch.Tensor, local_feature: dict):
+        batch_size = global_feature.shape[0]
+
+        global_feature = global_feature.squeeze(dim=1)
+        image_embedding = F.relu(self.global_conv(global_feature))
+        image_embedding = image_embedding + self.global_pos_embedding.repeat([batch_size, 1, 1, 1]).to(self.device)
+        image_embedding = image_embedding.reshape(batch_size, -1, 49)
+
+        detection_input_features = self.local_embedding(local_feature['features'].unsqueeze(dim=0)).squeeze(dim=0)
+        local_input = torch.cat((
+            detection_input_features,
+            local_feature['labels'].unsqueeze(dim=2),
+            local_feature['bboxes'] / self.image_size,
+            local_feature['scores'].unsqueeze(dim=2),
+            local_feature['indicator']
+        ), dim=2)
+
+        if self.use_nn_transformer:
+            visual_representation = self.visual_transformer(src=local_input, tgt=image_embedding.permute(0, 2, 1))
+        else:
+            visual_representation, _ = self.visual_transformer(src=local_input, query_embed=image_embedding)
+
+        visual_rep = self.visual_rep_embedding(visual_representation)
+        visual_rep = visual_rep.reshape(batch_size, -1)
+
+        action = self.pretrain_fc(visual_rep)
+
+        return {
+            'action': action,
+            'fc_weights': self.pretrain_fc.weight,
+            'visual_reps': visual_rep.reshape(batch_size, 64, 49)
+        }
