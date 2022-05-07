@@ -1,11 +1,10 @@
 """ Contains the Episodes for Navigation. """
-from datasets.environment import Environment
-from datasets.offline_controller_with_small_rotation import ThorAgentState
-from utils.model_util import gpuify
+from data.environment import Environment
+from data.offline_controller_with_small_rotation import ThorAgentState
 from .basic_episode import BasicEpisode
 import pickle
 import random
-from datasets.data import num_to_name
+from data.data import num_to_name
 
 
 class TestValEpisode(BasicEpisode):

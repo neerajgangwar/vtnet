@@ -25,7 +25,7 @@ def a3c_train(
         target_classes,
         device,
 ):
-    targets = target_classes[args.num_category]
+    targets = target_classes[22]
 
     player = NavigationAgent(args, scenes, targets, device)
     compute_grad = True

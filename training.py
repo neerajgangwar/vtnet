@@ -25,7 +25,10 @@ def createOutputDirectory(path):
 
 def main(args):
     outdir = createOutputDirectory(args.outdir)
-    model = VTNet().to(device)
+    model = VTNet(device).to(device)
+    start_time_str = time.strftime(
+        '%Y-%m-%d_%H-%M-%S', time.localtime(time.time())
+    )
     train_total_ep = 0
     n_frames = 0
 
@@ -61,7 +64,7 @@ def main(args):
         train_total_ep = saved_state["episodes"]
         n_frames = saved_state["frames"]
 
-    target = a3c_train if not args.eval else a3c_eval
+    target = a3c_train # if not args.eval else a3c_eval
     end_flag = mp.Value(ctypes.c_bool, False)
     train_res_queue = mp.Queue()
     scenes = loading_scene_list("train")
@@ -78,6 +81,7 @@ def main(args):
                 end_flag,
                 scenes,
                 AI2THOR_TARGET_CLASSES,
+                device,
             ),
         )
         p.start()
@@ -104,7 +108,7 @@ def main(args):
                 save_path = os.path.join(
                     outdir,
                     '{0}_{1}_{2}_{3}.dat'.format(
-                        args.title, n_frames, train_total_ep
+                        args.title, n_frames, train_total_ep, start_time_str
                     ),
                 )
                 torch.save(state, save_path)
@@ -125,12 +129,15 @@ if __name__ == "__main__":
     parser.add_argument("--data-dir", type=str, required=True, dest="data_dir", help="Data directory of training data")
     parser.add_argument("--out-dir", type=str, required=True, dest="outdir", help="Output directory")
     parser.add_argument("--lr", type=float, required=False, dest="lr", help="Learning rate", default=0.0001)
-    parser.add_argument("--pretrained-lr", type=float, required=False, dest="lr", help="Learning rate", default=0.00001)
+    parser.add_argument("--pretrained-lr", type=float, required=False, dest="pretrained_lr", help="Learning rate", default=0.00001)
     parser.add_argument("--workers", type=int, required=False, dest="workers", help="Number of workers", default=12)
     parser.add_argument("--max-ep", type=int, required=False, dest="max_ep", help="Number of epochs", default=60000)
     parser.add_argument("--save-every", type=int, required=False, dest="save_every", help="Save trained models after {save-every} epochs", default=1000)
     parser.add_argument("--use-nn-transformer", action="store_true", dest="use_nn_transformer", help="Use torch.nn.Transformer")
     parser.add_argument("--pretrained-vtnet", dest="pretrained_vtnet", required=False, help="Pretrained VTNet")
+    parser.add_argument("--verbose", action="store_true", dest="verbose", help="Verbose output")
+    parser.add_argument("--init-model", dest="init_model", required=False, help="Saved model")
+    parser.add_argument("--num-workers", type=int, required=False, dest="num_workers", help="Number of workers", default=4)
 
     args = parser.parse_args()
     main(args)

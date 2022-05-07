@@ -5,7 +5,7 @@ import torch
 import torch.nn.functional as F
 import numpy as np
 from torch.autograd import Variable
-from datasets.constants import DONE_ACTION_INT, AI2THOR_TARGET_CLASSES
+from data.constants import DONE_ACTION_INT, AI2THOR_TARGET_CLASSES
 
 
 class ThorAgent:
