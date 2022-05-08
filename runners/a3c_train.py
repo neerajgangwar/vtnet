@@ -33,10 +33,8 @@ def a3c_train(
     model_options = ModelOptions()
 
     episode_num = 0
-    print(f"end_flag: {end_flag.value}")
 
     while not end_flag.value:
-        print(f"something happening")
         # Get a new episode.
         total_reward = 0
         player.eps_len = 0
@@ -46,7 +44,6 @@ def a3c_train(
 
         # Train on the new episode.
         while not player.done:
-            print(f"Playing")
             # Make sure model is up to date.
             player.sync_with_shared(model)
             # Run episode for num_steps or until player is done.

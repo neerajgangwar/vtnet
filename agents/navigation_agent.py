@@ -25,6 +25,7 @@ class NavigationAgent(ThorAgent):
             VTNet(device=device, use_nn_transformer=args.use_nn_transformer), args, scenes, targets, device, episode, max_episode_length,
         )
         self.hidden_state_sz = hidden_state_sz
+        self.model_name = "VTNetModel"
 
         self.glove = {}
         # if 'SP' in self.model_name:
@@ -95,17 +96,15 @@ class NavigationAgent(ThorAgent):
 
     def reset_hidden(self):
         if 'SingleLayerLSTM' not in self.model_name:
-            with torch.cuda.device(self.gpu_id):
-                self.hidden = (
-                    torch.zeros(2, 1, self.hidden_state_sz).cuda(),
-                    torch.zeros(2, 1, self.hidden_state_sz).cuda(),
-                )
+            self.hidden = (
+                torch.zeros(2, 1, self.hidden_state_sz).to(self.device),
+                torch.zeros(2, 1, self.hidden_state_sz).to(self.device),
+            )
         else:
-            with torch.cuda.device(self.gpu_id):
-                self.hidden = (
-                    torch.zeros(1, 1, self.hidden_state_sz).cuda(),
-                    torch.zeros(1, 1, self.hidden_state_sz).cuda(),
-                )
+            self.hidden = (
+                torch.zeros(1, 1, self.hidden_state_sz).to(self.device),
+                torch.zeros(1, 1, self.hidden_state_sz).to(self.device),
+            )
 
         self.last_action_probs = torch.zeros((1, self.action_space)).to(self.device)
 

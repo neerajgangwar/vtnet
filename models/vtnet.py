@@ -222,7 +222,10 @@ class VTNet(nn.Module):
 
         action_embedding = F.relu(self.embed_action(action_embedding_input)).unsqueeze(dim=2)
         visual_queries = torch.cat((image_embedding, action_embedding), dim=-1)
-        visual_representation, encoded_rep = self.visual_transformer(src=detection_input,
+        if self.use_nn_transformer:
+            visual_representation = self.visual_transformer(src=detection_input, tgt=visual_queries.permute(0, 2, 1))
+        else:
+            visual_representation, encoded_rep = self.visual_transformer(src=detection_input,
                                                                         query_embed=visual_queries)
         out = self.visual_rep_embedding(visual_representation)
 

@@ -71,13 +71,9 @@ class ThorAgent:
 
         self.record_attention = False # args.record_attention
 
-    # def sync_with_shared(self, shared_model):
-    #     """ Sync with the shared model. """
-    #     if self.gpu_id >= 0:
-    #         with torch.cuda.device(self.gpu_id):
-    #             self.model.load_state_dict(shared_model.state_dict())
-    #     else:
-    #         self.model.load_state_dict(shared_model.state_dict())
+    def sync_with_shared(self, shared_model):
+        """ Sync with the shared model. """
+        self.model.load_state_dict(shared_model.state_dict())
 
     def eval_at_state(self, model_options):
         """ Eval at state. """

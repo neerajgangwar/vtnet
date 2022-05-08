@@ -16,7 +16,7 @@ from utils.data_utils import loading_scene_list
 
 def createOutputDirectory(path):
     if not os.path.exists(path):
-        os.mkdir(path)
+        os.makedirs(path)
 
     path = f"{path}/{datetime.now().strftime('%Y%m%d-%H%M%S%f')}"
     os.mkdir(path)
@@ -25,15 +25,22 @@ def createOutputDirectory(path):
 
 def main(args):
     outdir = createOutputDirectory(args.outdir)
-    model = VTNet(device).to(device)
+    model = VTNet(device, args.use_nn_transformer)#.to(device)
     start_time_str = time.strftime(
         '%Y-%m-%d_%H-%M-%S', time.localtime(time.time())
     )
     train_total_ep = 0
     n_frames = 0
+    args.num_steps = 50
+    args.gamma = 0.99
+    args.tau = 1.
+    args.beta = 1e-2
+    args.scene_types = ['kitchen', 'living_room', 'bedroom', 'bathroom']
+    args.title = "a3c_vtnet"
 
     if args.pretrained_vtnet is not None:
         saved = torch.load(args.pretrained_vtnet, map_location=device)
+        assert args.use_nn_transformer == saved["args"].use_nn_transformer
         model_dict = model.state_dict()
         pretrained_dict = {
             k: v for k, v in saved['model'].items() if (k in model_dict and v.shape == model_dict[k].shape)
@@ -89,17 +96,15 @@ def main(args):
         time.sleep(0.1)
 
     print("Train agents created.")
-    a3c_train(args, model, optimizer, train_res_queue, end_flag, scenes, AI2THOR_TARGET_CLASSES, device)
+    start_time = time.time()
 
     try:
         while train_total_ep < args.max_ep:
-            print(f"train_total_ep: {train_total_ep}")
             train_result = train_res_queue.get()
-            print(f"train_result: {train_result}")
             train_total_ep += 1
             n_frames += train_result['ep_length']
 
-            if (train_total_ep % args.save_freq) == 0:
+            if (train_total_ep % args.save_every) == 0:
                 print('{}: {}: {}'.format(
                     train_total_ep, n_frames, time.strftime('%Y-%m-%d %H-%M-%S', time.localtime(time.time())))
                 )
@@ -108,6 +113,7 @@ def main(args):
                     'optimizer': optimizer.state_dict(),
                     'episodes': train_total_ep,
                     'frames': n_frames,
+                    'args': args,
                 }
                 save_path = os.path.join(
                     outdir,
@@ -117,8 +123,8 @@ def main(args):
                 )
                 torch.save(state, save_path)
 
-            if args.test_speed and train_total_ep % 1000 == 0:
-                print('{} ep/s'.format(1000 / (time.time() - start_time)))
+            if train_total_ep % 1 == 0:
+                print('{} s/ep'.format(time.time() - start_time))
                 start_time = time.time()
 
     finally:
@@ -129,6 +135,7 @@ def main(args):
 
 
 if __name__ == "__main__":
+    torch.multiprocessing.set_start_method("spawn")
     parser = argparse.ArgumentParser(description="VTNet training.")
     parser.add_argument("--data-dir", type=str, required=True, dest="data_dir", help="Data directory of training data")
     parser.add_argument("--out-dir", type=str, required=True, dest="outdir", help="Output directory")
