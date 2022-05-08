@@ -1,0 +1,5 @@
+outs:
+- md5: 0a96cc0b22fdd665c4b07c2049092dfb.dir
+  size: 3653615571
+  nfiles: 51
+  path: training_output
