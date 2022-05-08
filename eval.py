@@ -1,6 +1,7 @@
 import os
 import json
-from datetime import datetime
+import argparse
+import torch
 
 from main_eval import main_eval
 from globals import device
@@ -11,15 +12,16 @@ from tabulate import tabulate
 os.environ["OMP_NUM_THREADS"] = "1"
 
 
-def full_eval(args, train_dir):
+def full_eval(args):
     assert args is not None
-    assert train_dir is not None
+    
+    outdir = os.path.join(args.saved_model_dir, "validation")
 
     args.phase = 'eval'
     args.episode_type = 'TestValEpisode'
     # args.test_or_val = 'val'
 
-    args.results_json = os.path.join(train_dir, 'result.json')
+    args.results_json = os.path.join(outdir, 'result.json')
 
     # Get all valid saved_models for the given title and sort by train_ep.
     checkpoints = [(f, f.split("_")) for f in os.listdir(args.save_model_dir)]
@@ -41,7 +43,7 @@ def full_eval(args, train_dir):
 
         # run eval on model
         # args.test_or_val = "val"
-        main_eval(args, saved_model=model, outdir=train_dir, device=device)
+        main_eval(args, saved_model=model, outdir=outdir, device=device)
 
         # check if best on val.
         with open(args.results_json, "r") as f:
@@ -58,7 +60,7 @@ def full_eval(args, train_dir):
     # Evaluate on the test dataset
     # args.test_or_val = "test"
     args.load_model = best_model_on_val
-    main_eval(args, saved_model=model, outdir=train_dir, device=device)
+    main_eval(args, saved_model=model, outdir=outdir, device=device)
 
     with open(args.results_json, "r") as f:
         results = json.load(f)
@@ -80,4 +82,10 @@ def full_eval(args, train_dir):
 
 
 if __name__ == "__main__":
-    full_eval()
+    torch.multiprocessing.set_start_method("spawn")
+    parser = argparse.ArgumentParser(description="VTNet training.")
+    parser.add_argument("--data-dir", type=str, required=True, dest="data_dir", help="Data directory of val/test data")
+    parser.add_argument("--saved-model-dir", type=str, required=True, dest="saved_model_dir", help="Saved model directory")
+
+    args = parser.parse_args()
+    full_eval(args=args)
