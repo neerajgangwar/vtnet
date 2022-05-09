@@ -34,12 +34,10 @@ def a3c_val(
     else:
         args.max_episode_length = 100
 
+    saved_state = torch.load(saved_model, map_location=device)
+    args.use_nn_transformer = saved_state["args"].use_nn_transformer
     model = VTNet(device=device, use_nn_transformer=args.use_nn_transformer)
-
-    if saved_model != "":
-        saved_state = torch.load(saved_model, map_location=device)
-        assert args.use_nn_transformer == saved_state["model"].use_nn_transformer
-        model.load_state_dict(saved_state["model"])
+    model.load_state_dict(saved_state["model"])
 
     player = NavigationAgent(args, scenes, targets, device)
     player.sync_with_shared(model)

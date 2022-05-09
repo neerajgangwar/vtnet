@@ -14,20 +14,25 @@ from runners import a3c_val
 
 
 def main_eval(args, saved_model, outdir, device):
-    scenes = loading_scene_list(args)
+    scenes = loading_scene_list(phase="eval")
     processes = []
 
     res_queue = mp.Queue()
     args.learned_loss = False
     args.num_steps = 50
-    target = a3c_val
+    target = a3c_val.a3c_val
+
+    try:
+        mp.set_start_method("spawn") 
+    except:
+        pass
 
     rank = 0
-    for scene_type in args.scene_types:
+    scene_types = ['kitchen', 'living_room', 'bedroom', 'bathroom']
+    for scene_type in scene_types:
         p = mp.Process(
             target=target,
             args=(
-                rank,
                 args,
                 saved_model,
                 res_queue,
@@ -45,7 +50,7 @@ def main_eval(args, saved_model, outdir, device):
     count = 0
     end_count = 0
 
-    proc = len(args.scene_types)
+    proc = len(scene_types)
     pbar = tqdm(total=250 * proc)
     train_scalars = ScalarMeanTracker()
 
@@ -75,5 +80,5 @@ def main_eval(args, saved_model, outdir, device):
     if not os.path.exists(visualization_dir):
         os.mkdir(visualization_dir)
 
-    with open(os.path.join(visualization_dir, args.visualize_file_name), 'w') as wf:
+    with open(os.path.join(visualization_dir, "visualize.json"), 'w') as wf:
         json.dump(visualizations, wf)

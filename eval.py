@@ -16,6 +16,8 @@ def full_eval(args):
     assert args is not None
     
     outdir = os.path.join(args.saved_model_dir, "validation")
+    if not os.path.exists(outdir):
+        os.mkdir(outdir)
 
     args.phase = 'eval'
     args.episode_type = 'TestValEpisode'
@@ -24,11 +26,11 @@ def full_eval(args):
     args.results_json = os.path.join(outdir, 'result.json')
 
     # Get all valid saved_models for the given title and sort by train_ep.
-    checkpoints = [(f, f.split("_")) for f in os.listdir(args.save_model_dir)]
+    checkpoints = [(f, f.split("_")) for f in os.listdir(args.saved_model_dir)]
     checkpoints = [
         (f, int(s[-3]))
         for (f, s) in checkpoints
-        if len(s) >= 4 and f.startswith(args.title) and int(s[-3]) >= args.test_start_from
+        if len(s) >= 4 # and f.startswith(args.title) and int(s[-3]) >= args.test_start_from
     ]
     checkpoints.sort(key=lambda x: x[1])
 
@@ -38,7 +40,7 @@ def full_eval(args):
     # To find best model
     for (f, train_ep) in tqdm(checkpoints, desc="Checkpoints."):
 
-        model = os.path.join(args.save_model_dir, f)
+        model = os.path.join(args.saved_model_dir, f)
         # args.load_model = model
 
         # run eval on model
@@ -55,7 +57,7 @@ def full_eval(args):
 
         print(f"{'=' * 20}\nModel: {model}")
         print(f"val/success: {results['success']}, {train_ep}")
-        print(f"val/spl: results['spl'], {train_ep}")
+        print(f"val/spl: {results['spl']}, {train_ep}")
 
     # Evaluate on the test dataset
     # args.test_or_val = "test"
@@ -86,6 +88,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="VTNet training.")
     parser.add_argument("--data-dir", type=str, required=True, dest="data_dir", help="Data directory of val/test data")
     parser.add_argument("--saved-model-dir", type=str, required=True, dest="saved_model_dir", help="Saved model directory")
+    parser.add_argument("--num-workers", type=int, required=False, dest="num_workers", help="Number of workers", default=4)
+    parser.add_argument("--verbose", action="store_true", dest="verbose", help="Verbose output")
 
     args = parser.parse_args()
     full_eval(args=args)
