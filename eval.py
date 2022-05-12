@@ -62,7 +62,7 @@ def full_eval(args):
     # Evaluate on the test dataset
     # args.test_or_val = "test"
     args.load_model = best_model_on_val
-    main_eval(args, saved_model=model, outdir=outdir, device=device)
+    main_eval(args, saved_model=best_model_on_val, outdir=outdir, device=device)
 
     with open(args.results_json, "r") as f:
         results = json.load(f)
